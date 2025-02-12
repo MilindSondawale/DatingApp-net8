@@ -1,5 +1,8 @@
 using API.Data;
+using API.DTOs;
 using API.Entities;
+using API.Interfaces;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -10,30 +13,34 @@ namespace API.Controllers
 {
     // [Route("api/[controller]")]
     // [ApiController]
-    public class UsersController(DataContext context) : BaseApiController
+    [Authorize]
+    public class UsersController(IUserRepository userRepository) : BaseApiController
     {
        // private readonly DataContext context = context;  No need becouse of primary costructor.
-        [AllowAnonymous]
+        
         [HttpGet]
-        public async Task< ActionResult<IEnumerable<AppUser>>> GetUsers()
+        public async Task< ActionResult<IEnumerable<MemberDto>>> GetUsers()
         {
-            var users= await context.Users.ToListAsync();
+            var users= await userRepository.GetMembersAsync();
+
+            //var usersToReturn=mapper.Map<IEnumerable<MemberDto>>(users);
             
-           // return Ok(users);
-            return users;
-
-
+           // return Ok(usersToReturn);
+           return Ok(users);
+         
         }
             
-         [Authorize]    
-         [HttpGet("{id:int}")]
-        public async Task< ActionResult<AppUser>> GetUser(int id)
+         
+         [HttpGet("{username}")]
+        public async Task< ActionResult<MemberDto>> GetUser(string  username)
         {
-            var user=await context.Users.FindAsync(id);
-            if(user==null)
-            return NotFound();
+            var user=await userRepository.GetMemberAsync(username);
         
-        return user;
+             if(user==null) return NotFound();
+       
+             //return mapper.Map<MemberDto>(user);
+
+             return user;
 
         }
     }

@@ -1,0 +1,1066 @@
+SECTION 9:Building the User Interface.
+======================================
+95> Using TypeScript.
+1. Nothing any special in it .It is just introduction of typeScribe without any notes.
+----------------------------------------
+96> Creating the member interface.
+1. Compile API project ie. as fallow
+  API>dotnet watch
+----------------------
+2. Open postman and run url User by username and copy the respose from raw.
+2.- open new browser and type jsontots and click first link that is transform tools and paste capy code to the left side(json)
+   and it output is right side i.e typescript code.
+  -copy  the output json code from right side.
+ -create a new file member.ts in app/_models. and paste output copy code of json in here.
+It look like as fallow
+
+
+export interface Root {
+  id: number
+  username: string
+  age: number
+  photoUrl: string
+  knownAs: string
+  created: string
+  lastActive: string
+  gender: string
+  introduction: string
+  interests: string
+  lokingFor: any
+  city: string
+  country: string
+  photos: Photo[]
+}
+
+export interface Photo {
+  id: number
+  url: string
+  isMain: boolean
+}
+
+3.Add another file that is photo.ts in same folder _models.
+-cut the code of Photo from member.ts file and paste in here photo.ts file.
+
+export interface Photo {
+    id: number
+    url: string
+    isMain: boolean
+  }
+
+4. in member.ts file import photo in it.
+
+finaly both the file is look like as fallows(after do change in it)
+
+ 1.member.ts file
+
+import { Photo } from "./photo"
+
+export interface Member {
+    id: number
+    username: string
+    age: number
+    photoUrl: string
+    knownAs: string
+    created: Date
+    lastActive: Date
+    gender: string
+    introduction: string
+    interests: string
+    lokingFor: any
+    city: string
+    country: string
+    photos: Photo[]
+  }
+  
+ -----------------
+2. phot.ts file
+
+export interface Photo {
+    id: number
+    url: string
+    isMain: boolean
+  }
+--------------------------------
+97>Adding a member service
+
+1.In 3rd prompt 
+client>ng g s _services/members --skip-tests
+
+- open this file member.service.ts file and inject with some code as fallow
+
+
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+
+
+@Injectable({
+  providedIn: 'root'
+})
+export class MembersService {
+  
+  private http=inject(HttpClient);
+  
+  constructor() { }
+}
+----------------------------
+2. In 3rd prompt generate environments
+client>ng g environments 
+it create 2 file. 
+
+-it configuration show in angular.json file as fallow
+
+ "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.development.ts"
+                }
+              ]
+            }
+-------------------------------------------
+3. write the code in environment.development.ts file as fallow
+
+export const environment = {
+
+    production:false,
+    apiUrl:'http://localhost:5000/api/'
+    
+};
+--------------------------------------
+-similarly write the code for environment.ts file as fallow
+
+export const environment = {
+
+     production:true,
+    apiUrl:'api/'
+};
+---------------------
+4. write the further code for member.service.ts file with import environment service,baseUrl and
+ other with some funtions
+as fallows
+
+import { HttpClient, HttpHandler, HttpHeaders } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { environment } from '../../environments/environment';
+import { Member } from '../_models/member';
+import { AccountService } from './account.service';
+import { retry } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class MembersService {
+  
+  private http=inject(HttpClient);
+  private accountService=inject(AccountService);
+  baseUrl=environment.apiUrl;
+  
+
+  getMembers(){
+    return this.http.get<Member[]>(this.baseUrl+'users',this.getHttpOptions());
+  }
+
+  getMember(username:string){
+    return this.http.get<Member>(this.baseUrl+'users/'+username,this.getHttpOptions());
+  }
+
+  getHttpOptions(){
+    return{
+      headers:new HttpHeaders({
+        Authorization:`Bearer ${this.accountService.currentUser()?.token}`
+      })
+    }
+  }
+}
+------------------------
+5.change the baseUrl from Account.service.ts file as fallows
+
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable, signal } from '@angular/core';
+import { User } from '../_models/user';
+import { map } from 'rxjs';
+import { environment } from '../../environments/environment';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AccountService {
+  private http=inject(HttpClient);
+  baseUrl=environment.apiUrl;
+  currentUser = signal<User | null>(null);
+
+  login(model:any){
+    return this.http.post<User>(this.baseUrl+'account/login',model).pipe(
+      map(user =>{
+        if(user){
+          localStorage.setItem('user',JSON.stringify(user));
+          this.currentUser.set(user);
+        }
+        
+      })
+    )
+  }
+  register(model:any){
+    return this.http.post<User>(this.baseUrl+'account/register',model).pipe(
+      map(user =>{
+        if(user){
+          localStorage.setItem('user',JSON.stringify(user));
+          this.currentUser.set(user);
+        }
+        return user;
+      })
+    )
+  }
+
+ logout(){
+  localStorage.removeItem('user');
+  this.currentUser.set(null);
+ }
+
+}
+
+-------------------------------
+-Do same as test-error.c.ts faile also
+
+import { HttpClient } from '@angular/common/http';
+import { Component, inject } from '@angular/core';
+import { environment } from '../../../environments/environment';
+
+@Component({
+  selector: 'app-test-errors',
+  imports: [],
+
+  templateUrl: './test-errors.component.html',
+  styleUrl: './test-errors.component.css'
+})
+export class TestErrorsComponent {
+
+  baseUrl=environment.apiUrl;
+  private http=inject(HttpClient);
+  validationErrors:string[]=[];
+
+  get400Error(){
+    this.http.get(this.baseUrl+'buggy/bad-request').subscribe({
+      next:response=>console.log(response),
+      error:error=>console.log(error)
+    })
+  }
+
+
+  get401Error(){
+    this.http.get(this.baseUrl+'buggy/auth').subscribe({
+      next:response=>console.log(response),
+      error:error=>console.log(error)
+    })
+  }
+
+
+  get404Error(){
+    this.http.get(this.baseUrl+'buggy/not-found').subscribe({
+      next:response=>console.log(response),
+      error:error=>console.log(error)
+    })
+  }
+
+
+  get500Error(){
+    this.http.get(this.baseUrl+'buggy/server-error').subscribe({
+      next:response=>console.log(response),
+      error:error=>console.log(error)
+    })
+    
+  }
+
+  get400ValidationError(){
+    this.http.post(this.baseUrl+'account/register',{}).subscribe({
+         next:response=>console.log(response),
+          error:error=>{
+            console.log(error);
+            this.validationErrors=error;
+          }
+    
+      })
+
+  }
+}
+--------------------------
+98>Retrieving the list of member.
+
+1. Remove code from home.c.ts file i.e OnInit() method,getUsers(),Users:any; and inject code with import directive 
+   (but not all code)
+
+import { Component, inject, OnInit } from '@angular/core';
+import { RegisterComponent } from "../register/register.component";
+import { HttpClient } from '@angular/common/http';
+
+@Component({
+  selector: 'app-home',
+  imports: [RegisterComponent],
+  templateUrl: './home.component.html',
+  styleUrl: './home.component.css'
+})
+export class HomeComponent  {
+  // http=inject(HttpClient);
+
+  registerMode=false;
+//  users:any;
+
+//  ngOnInit(): void {
+//    this.getUsers();
+//  }
+
+ registerToggle(){
+  this.registerMode=!this.registerMode
+ }
+
+ cancelRegisterMode(event:boolean){
+ this.registerMode=event;
+ }
+
+//  getUsers(){
+
+//   this.http.get('http://localhost:5000/api/users').subscribe({
+//     next:response=>this.users=response,
+//     error:error=>console.log(error),
+//     complete:()=>console.log('Request has completed')
+
+//   })
+
+}
+
+----------------------------
+2. Do code in member-list.c.ts file which implemet from OnInit() method and other code as fallows
+
+import { Component, inject, OnInit } from '@angular/core';
+import { MembersService } from '../../_services/members.service';
+import { Member } from '../../_models/member';
+
+@Component({
+  selector: 'app-member-list',
+  imports: [],
+  templateUrl: './member-list.component.html',
+  styleUrl: './member-list.component.css'
+})
+export class MemberListComponent implements OnInit {
+ 
+  private memberService=inject(MembersService);
+  members:Member[]=[];
+ 
+  ngOnInit(): void {
+    this.loadMember();
+    
+  }
+
+  loadMember(){
+    this.memberService.getMembers().subscribe({
+      next:members=>this.members=members
+    })
+  }
+
+}
+----------------------
+3. write codein member-list.c.html file as fallow
+
+<div class="row">
+  <div class="col-2">
+     
+   @for (member of members; track member.id) {
+   
+    <p>{{member.knownAs}}</p>
+
+   }
+
+  </div>
+</div>
+-------------------------
+99> Creating member card.
+
+1. In 3rd prompt generate component 
+client>ng g c members/member-card --skip-tests
+
+2. open member-card.c.ts file and write the code for it which look like 
+
+import { Component, input } from '@angular/core';
+import { Member } from '../../_models/member';
+
+@Component({
+  selector: 'app-member-card',
+  imports: [],
+  templateUrl: './member-card.component.html',
+  styleUrl: './member-card.component.css'
+})
+export class MemberCardComponent {
+ member=input.required<Member>();
+ 
+}
+------------------------
+2. open new browser to search bootstrape -Doc -componet -card look the code of card.
+ 
+3. write code in m-c.c.html as fallow
+
+<div class="card mb-4">
+    <div class="card-img-wrapper">
+     <img src="{{member().photoUrl}}" alt="{{member().knownAs}}" class="card-img-top">
+    </div>
+    <div class="card-body p-1">
+       <h6 class="card-title text-center mb-1">
+          <i class="fa fa-user me-2"></i>
+          {{member().knownAs}}
+       </h6>
+       <p class="card-text text-muted text-center">{{member().city}}</p>
+    </div>
+</div>
+-----------------------
+4. similarly write code for member-list.c.html file and member-list.c.ts file as fallow
+
+1.member-list.c.ts file
+<div class="card mb-4">
+    <div class="card-img-wrapper">
+     <img src="{{member().photoUrl}}" alt="{{member().knownAs}}" class="card-img-top">
+    </div>
+    <div class="card-body p-1">
+       <h6 class="card-title text-center mb-1">
+          <i class="fa fa-user me-2"></i>
+          {{member().knownAs}}
+       </h6>
+       <p class="card-text text-muted text-center">{{member().city}}</p>
+    </div>
+</div>
+
+2. member-list.c.html
+
+<div class="row">
+  
+     
+   @for (member of members; track member.id) {
+
+    <div class="col-2">
+   
+       <app-member-card [member]="member"></app-member-card>
+      </div>
+   }
+
+  </div>
+-------------------------
+100>Adding some style to the cards
+
+1. oprn member-card.component.ts file 
+
+import { Component, input, ViewEncapsulation } from '@angular/core';
+import { Member } from '../../_models/member';
+
+@Component({
+  selector: 'app-member-card',
+  imports: [],
+  templateUrl: './member-card.component.html',
+  styleUrl: './member-card.component.css',
+ // encapsulation: ViewEncapsulation.None
+
+})
+export class MemberCardComponent {
+ member=input.required<Member>();
+ 
+}
+------------------------
+2.open css file from it that is member.component.css file and write code for it.
+
+.card:hover img{
+    transform: scale(1.2,1.2);
+    transition-duration:500ms;
+    transition-timing-function: ease-out;
+}
+
+.card img {
+    transform: scale(1.0,1.0);
+    transition-duration:500ms;
+    transition-timing-function: ease-out;
+}
+
+.card-img-wrapper{
+    overflow: hidden;
+}
+---------------------------------------------
+101> Adding animated button.
+
+1. Do changes in member-card.component.html file as fallows
+
+<div class="card mb-4">
+    <div class="card-img-wrapper">
+     <img src="{{member().photoUrl}}" alt="{{member().knownAs}}" class="card-img-top">
+
+      <ul class="list-inline member-icons  animate text-center">
+         <li class="list-inline-item">
+            <button class="btn btn-primary"><i class="fa fa-user"></i></button>
+         </li>
+         <li class="list-inline-item">
+            <button class="btn btn-primary"><i class="fa fa-heart"></i></button>
+         </li>
+         <li class="list-inline-item">
+            <button class="btn btn-primary"><i class="fa fa-envelope"></i></button>
+         </li>
+      </ul>
+
+    </div>
+    <div class="card-body p-1">
+       <h6 class="card-title text-center mb-1">
+          <i class="fa fa-user me-2"></i>
+          {{member().knownAs}}
+       </h6>
+       <p class="card-text text-muted text-center">{{member().city}}</p>
+    </div>
+</div>
+----------------------------
+2. similarly do also changes in member-card.componemt.css file as fallows
+
+.card:hover img{
+    transform: scale(1.2,1.2);
+    transition-duration:500ms;
+    transition-timing-function: ease-out;
+}
+
+.card img {
+    transform: scale(1.0,1.0);
+    transition-duration:500ms;
+    transition-timing-function: ease-out;
+}
+
+.card-img-wrapper{
+    overflow: hidden;
+    position: relative;
+}
+
+.member-icons{
+    position: absolute;
+    bottom: -30%;
+    left: 0;
+    right: 0;
+    margin-right: auto;
+    margin-left: auto;
+    opacity: 0;
+
+}
+
+.card-img-wrapper:hover .member-icons{
+    bottom: 0;
+    opacity: 1;
+
+}
+
+.animate{
+    transition: all  0.3s ease-in-out;
+    
+}
+-----------------------------------
+102> Using an interceptor to send the token.
+
+In 3rd prompt 
+client>ng g interceptor _interceptors/jwt --skip-tests
+
+2. open this jwtInterception.ts file and write code for it.
+
+import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { AccountService } from '../_services/account.service';
+
+export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
+  const accountServer=inject(AccountService);
+
+  if(accountServer.currentUser() ){
+    req=req.clone({
+      setHeaders:{
+        Authorization:`Bearer ${accountServer.currentUser()?.token}`
+      }
+    })
+  }
+  return next(req);
+};
+--------------------------
+2. Open app.config.ts and add jwtInterceptor in it at the method of providerHttpClient()method at last.
+import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+
+import { routes } from './app.routes';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideAnimations } from '@angular/platform-browser/animations';
+import { provideToastr } from 'ngx-toastr';
+import { errorInterceptor } from './_interceptors/error.interceptor';
+import { jwtInterceptor } from './_interceptors/jwt.interceptor';
+
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }),
+     provideRouter(routes),
+     provideHttpClient(withInterceptors([errorInterceptor,jwtInterceptor])),
+     provideAnimations(),
+     provideToastr({
+      positionClass:'toast-bottom-right'
+     })
+    ]
+};
+------------------------
+3. Open members.service.ts file remove all the related code from it of accountServer with import directive.
+also remove getHttpOptions()method from it.
+
+import { HttpClient, HttpHandler, HttpHeaders } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { environment } from '../../environments/environment';
+import { Member } from '../_models/member';
+//import { AccountService } from './account.service';
+import { retry } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class MembersService {
+  
+  private http=inject(HttpClient);
+ // private accountService=inject(AccountService);
+  baseUrl=environment.apiUrl;
+  
+
+  getMembers(){
+    return this.http.get<Member[]>(this.baseUrl+'users');
+  }
+
+  getMember(username:string){
+    return this.http.get<Member>(this.baseUrl+'users/'+username);
+  }
+
+  // getHttpOptions(){
+  //   return{
+  //     headers:new HttpHeaders({
+  //       Authorization:`Bearer ${this.accountService.currentUser()?.token}`
+  //     })
+  //   }
+  // }
+}
+------------------------------------
+103>Routing to the detailed Page.
+
+ 1. open app.route.ts file change path of id component to username as fallow
+
+
+            {path:'members',component:MemberListComponent},
+           // {path:'members/:id',component:MemberDetailComponent},
+            {path:'members/:username',component:MemberDetailComponent},
+            {path:'lists',component:ListsComponent},
+            {path:'messages',component:MessagesComponent},
+---------------------------------------------------------------
+2. open member-detail.component.ts and loadMember() function in it and call it onInit() method which implement from it.
+
+import { Component, inject, OnInit } from '@angular/core';
+import { MembersService } from '../../_services/members.service';
+import { ActivatedRoute } from '@angular/router';
+import { Member } from '../../_models/member';
+
+@Component({
+  selector: 'app-member-detail',
+  imports: [],
+  templateUrl: './member-detail.component.html',
+  styleUrl: './member-detail.component.css'
+})
+export class MemberDetailComponent implements OnInit {
+ 
+
+  private memberService=inject(MembersService);
+  private route=inject(ActivatedRoute);
+  member?:Member;
+
+  ngOnInit(): void {
+
+   this.loadMember()
+  }
+
+  loadMember(){
+    const username=this.route.snapshot.paramMap.get('username');
+    if(!username) return;
+    this.memberService.getMember(username).subscribe({
+      next:member=>this.member=member
+    })
+  }
+
+}
+--------------------------------------
+3. write code in member-details.component.html file as fallows
+<h1>{{member?.knownAs}}</h1>
+------------------------------
+4. open member-card.componet.ts and import it with RouterLink as fallow
+
+import { Component, input, ViewEncapsulation } from '@angular/core';
+import { Member } from '../../_models/member';
+import { RouterLink } from '@angular/router';
+
+@Component({
+  selector: 'app-member-card',
+  imports: [RouterLink],
+  templateUrl: './member-card.component.html',
+  styleUrl: './member-card.component.css',
+ // encapsulation: ViewEncapsulation.None
+
+})
+export class MemberCardComponent {
+ member=input.required<Member>();
+ 
+}
+-----------------------------
+5. add routerLink attribute in first <li> button in member-card.component.html file as fallows
+ <ul class="list-inline member-icons  animate text-center">
+         <li class="list-inline-item">
+            <button routerLink="/members/{{member().username}}" class="btn btn-primary"><i class="fa fa-user"></i></button>
+         </li>
+         <li class="list-inline-item">
+            <button class="btn btn-primary"><i class="fa fa-heart"></i></button>
+         </li>
+         <li class="list-inline-item">
+            <button class="btn btn-primary"><i class="fa fa-envelope"></i></button>
+         </li>
+      </ul>
+---------------------------------
+104> Styling the member detailed Page
+
+1. write the code for design view in member-detail.component.html as fallow
+
+@if(member)
+{
+    <div class="row">
+        <div class="col-4">
+            <div class="card">
+               <img
+                 src="{{member.photoUrl || './assesrts/user.png'}}"
+                 alt="{{member.knownAs}}"
+                 class="card-img img-thumbnail"
+               >
+               <div class="card-body">
+
+                   <div>
+                    <strong>Location:</strong>
+                    <p>{{member.city}},{{member.country}}</p>
+                   </div>
+
+
+                   <div>
+                    <strong>Age:</strong>
+                    <p>{{member.age}}</p>
+                   </div>
+
+
+                   <div>
+                    <strong>Last Active:</strong>
+                    <p>{{member.lastActive}}</p>
+                   </div>
+
+
+                   <div>
+                    <strong>Member Since:</strong>
+                    <p>{{member.created}}</p>
+                   </div>
+
+               </div>
+               <div class="card-footer">
+                  
+                   <div class="btn btn-group d-flex">
+                     <button class="btn btn-primary" >Like</button>
+                     <button class="btn btn-success" >Like</button>
+                   </div>
+                   
+               </div>
+            </div>
+        </div>
+    </div>
+}
+-------------------
+2. Similarly write the code of css in member-details.componemt.css as fallows
+
+.img-thumbnail{
+    margin: 25px;
+    width: 85%;
+    height: 85%;
+}
+
+
+.card-body{
+    padding:  0 25px;
+
+}
+
+.card-footer{
+    padding:  10px  15px;
+    background-color: #fff;
+    border-top: none;
+}
+----------------------------------------
+105> Styling the member detailed page part-II
+1. change the code in member-detail.c.html file as fallow
+-Add new div with col-8
+
+@if(member)
+{
+    <div class="row">
+        <div class="col-4">
+            <div class="card">
+               <img
+                 src="{{member.photoUrl || './assesrts/user.png'}}"
+                 alt="{{member.knownAs}}"
+                 class="card-img img-thumbnail"
+               >
+               <div class="card-body">
+
+                   <div>
+                    <strong>Location:</strong>
+                    <p>{{member.city}},{{member.country}}</p>
+                   </div>
+
+
+                   <div>
+                    <strong>Age:</strong>
+                    <p>{{member.age}}</p>
+                   </div>
+
+
+                   <div>
+                    <strong>Last Active:</strong>
+                    <p>{{member.lastActive}}</p>
+                   </div>
+
+
+                   <div>
+                    <strong>Member Since:</strong>
+                    <p>{{member.created}}</p>
+                   </div>
+
+               </div>
+               <div class="card-footer">
+                  
+                   <div class="btn btn-group d-flex">
+                     <button class="btn btn-primary" >Like</button>
+                     <button class="btn btn-success" >Like</button>
+                   </div>
+
+               </div>
+            </div>
+        </div>
+
+        <div class="col-8">
+           <tabset class="member-tabset">
+           
+                 <tab heading="About {{member.knownAs}}">
+                     <h4>Description</h4>
+                     <p>{{member.introduction}}</p>
+                     <h4>Looking  for</h4>
+                     <p> {{member.lokingFor}}</p> 
+                 </tab>
+
+                 <tab heading="Interests">
+                     <h4>Interests</h4>
+                     <p> {{member.interests}}</p>
+                </tab>
+
+                <tab heading="Photos">
+                   <p>Photos will go here</p>
+                </tab>
+
+                <tab heading="Messages">
+                   <p>Messages will go here</p>
+                </tab>
+           </tabset>
+        </div>
+
+    </div>
+}
+---------------------
+2. copy code from student snippets that is member-tabs-css to syle.css file of main branch.
+
+/* You can add global styles to this file, and also import other style files */
+.tab-panel {
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+  }
+  
+  .nav-tabs > li.open, .member-tabset > .nav-tabs > li:hover {
+    border-bottom: 4px solid #fbcdcf;
+  }
+  
+  .member-tabset > .nav-tabs > li.open > a, .member-tabset > .nav-tabs > li:hover > a {
+    border: 0;
+    background: none !important;
+    color: #333333;
+  }
+  
+  .member-tabset > .nav-tabs > li.open > a > i, .member-tabset > .nav-tabs > li:hover > a > i {
+    color: #a6a6a6;
+  }
+  
+  .member-tabset > .nav-tabs > li.open .dropdown-menu, .member-tabset > .nav-tabs > li:hover .dropdown-menu {
+    margin-top: 0px;
+  }
+  
+  .member-tabset > .nav-tabs > li.active {
+    border-bottom: 4px solid #E95420;
+    position: relative;
+  }
+  
+  .member-tabset > .nav-tabs > li.active > a {
+    border: 0 !important;
+    color: #333333;
+  }
+  
+  .member-tabset > .nav-tabs > li.active > a > i {
+    color: #404040;
+  }
+  
+  .member-tabset > .tab-content {
+    margin-top: -3px;
+    background-color: #fff;
+    border: 0;
+    border-top: 1px solid #eee;
+    padding: 15px 0;
+  }
+  ------------------------
+106>Adding a Photo Gallery.
+
+1. Change code in member-details.component.ts file as fallow
+
+import { Component, inject, OnInit } from '@angular/core';
+import { MembersService } from '../../_services/members.service';
+import { ActivatedRoute } from '@angular/router';
+import { Member } from '../../_models/member';
+import { TabsModule } from 'ngx-bootstrap/tabs';
+import{GalleryItem, GalleryModule, ImageItem} from 'ng-gallery';
+
+
+@Component({
+  selector: 'app-member-detail',
+  imports: [TabsModule,GalleryModule],
+  templateUrl: './member-detail.component.html',
+  styleUrl: './member-detail.component.css'
+})
+export class MemberDetailComponent implements OnInit {
+ 
+
+  private memberService=inject(MembersService);
+  private route=inject(ActivatedRoute);
+  member?:Member;
+  images:GalleryItem[]=[];
+
+
+  ngOnInit(): void {
+
+   this.loadMember()
+  }
+
+  loadMember(){
+    const username=this.route.snapshot.paramMap.get('username');
+    if(!username) return;
+    this.memberService.getMember(username).subscribe({
+      next:member=>{
+        this.member=member;
+        member.photos.map(p=>{
+          this.images.push(new ImageItem({src: p.url,thumb:p.url}))
+        })
+
+      }
+    })
+  }
+
+}
+----------------
+Change code in member-detaile.componet.html file as fallow
+
+@if(member)
+{
+    <div class="row">
+        <div class="col-4">
+            <div class="card">
+               <img
+                 src="{{member.photoUrl || './assesrts/user.png'}}"
+                 alt="{{member.knownAs}}"
+                 class="card-img img-thumbnail"
+               >
+               <div class="card-body">
+
+                   <div>
+                    <strong>Location:</strong>
+                    <p>{{member.city}},{{member.country}}</p>
+                   </div>
+
+
+                   <div>
+                    <strong>Age:</strong>
+                    <p>{{member.age}}</p>
+                   </div>
+
+
+                   <div>
+                    <strong>Last Active:</strong>
+                    <p>{{member.lastActive}}</p>
+                   </div>
+
+
+                   <div>
+                    <strong>Member Since:</strong>
+                    <p>{{member.created}}</p>
+                   </div>
+
+               </div>
+               <div class="card-footer">
+                  
+                   <div class="btn btn-group d-flex">
+                     <button class="btn btn-primary" >Like</button>
+                     <button class="btn btn-success" >Like</button>
+                   </div>
+
+               </div>
+            </div>
+        </div>
+
+        <div class="col-8">
+           <tabset class="member-tabset">
+           
+                 <tab heading="About {{member.knownAs}}">
+                     <h4>Description</h4>
+                     <p>{{member.introduction}}</p>
+                     <h4>Looking  for</h4>
+                     <p> {{member.lokingFor}}</p> 
+                 </tab>
+
+                 <tab heading="Interests">
+                     <h4>Interests</h4>
+                     <p> {{member.interests}}</p>
+                </tab>
+
+                <tab heading="Photos" #photoTab="tab">
+                    @if(photoTab.active){
+
+                        <gallery
+                    [items]="images"
+                    class="gallery"
+                    > </gallery>
+  
+                    }
+                    
+                </tab>
+
+                <tab heading="Messages">
+                   <p>Messages will go here</p>
+                </tab>
+           </tabset>
+        </div>
+
+    </div>
+}
+-------------
+ change code in 3 line in member-card.component.html file as fallows
+ <img src="{{member().photoUrl ||'./assets/user/png'}}" alt="{{member().knownAs}}" class="card-img-top">
+==========================================================================================================
+
+
+
+
+  
+
+

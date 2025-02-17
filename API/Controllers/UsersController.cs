@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using API.Data;
 using API.DTOs;
 using API.Entities;
@@ -14,7 +15,7 @@ namespace API.Controllers
     // [Route("api/[controller]")]
     // [ApiController]
     [Authorize]
-    public class UsersController(IUserRepository userRepository) : BaseApiController
+    public class UsersController(IUserRepository userRepository,IMapper mapper) : BaseApiController
     {
        // private readonly DataContext context = context;  No need becouse of primary costructor.
         
@@ -42,6 +43,26 @@ namespace API.Controllers
 
              return user;
 
+        }
+
+        [HttpPut]
+        public async Task<ActionResult> UpdateUser(MemberUpdateDto memberUpdateDto)
+        {
+            var username=User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if(username==null) return BadRequest("No yourname found in token");
+
+            var user=await userRepository.GetUserByUsernameAsync(username);
+
+            if(user==null) return BadRequest("could not find user");
+
+            mapper.Map(memberUpdateDto,user);
+             
+             userRepository.Update(user);
+
+            if(await userRepository.SaveAllAsync()) return NoContent();
+
+            return BadRequest("Failed to update the user");
         }
     }
 }

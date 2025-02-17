@@ -1061,6 +1061,7 @@ Change code in member-detaile.componet.html file as fallow
 
 
 
+
   
 
 

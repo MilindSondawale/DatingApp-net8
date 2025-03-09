@@ -21,7 +21,7 @@ namespace API.Controllers
     IPhotoService photoService) : BaseApiController
     {
        // private readonly DataContext context = context;  No need becouse of primary costructor.
-        
+      //[Authorize(Roles ="Admin")]
         [HttpGet]
         public async Task< ActionResult<IEnumerable<MemberDto>>> GetUsers([FromQuery]UserParams userParams)
         {
@@ -37,7 +37,7 @@ namespace API.Controllers
          
         }
             
-         
+        // [Authorize(Roles ="Member")]
          [HttpGet("{username}")]
         public async Task< ActionResult<MemberDto>> GetUser(string  username)
         {

@@ -13,7 +13,10 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/client",
+            "outputPath": {
+              "base": "../API/wwwroot",
+              "browser": ""
+            },
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -21,10 +24,8 @@
             ],
             "tsConfig": "tsconfig.app.json",
             "assets": [
-              {
-                "glob": "**/*",
-                "input": "public"
-              }
+             "src/favicon.ico",
+             "src/assets"
             ],
             "styles": [
               "node_modules/ngx-bootstrap/datepicker/bs-datepicker.css",
@@ -42,8 +43,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "1.5mb",
+                  "maximumError": "2MB"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -51,6 +52,11 @@
                   "maximumError": "8kB"
                 }
               ],
+              "optimization": {
+                "styles": {
+                  "inlineCritical": false
+                }
+              },
               "outputHashing": "all"
             },
             "development": {
@@ -98,8 +104,9 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "assets"
               }
+             
             ],
             "styles": [
               "src/styles.css"

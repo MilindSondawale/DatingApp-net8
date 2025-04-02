@@ -36,6 +36,9 @@ IdentityUserToken<int>>(options)
            .IsRequired();   
 
 
+
+
+
         builder.Entity<UserLike>()
           .HasKey(k => new {k.SourceUserId, k.TargetUserId});
 
@@ -49,7 +52,7 @@ IdentityUserToken<int>>(options)
             .HasOne(s =>s.TargetUser)
             .WithMany(l =>l.LikedByUsers)
             .HasForeignKey(s =>s.TargetUserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.NoAction);
 
 
           builder.Entity<Message> ()
